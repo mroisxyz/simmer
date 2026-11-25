@@ -2,7 +2,7 @@
 // (never a menu): dishes, tickets, timers and particles are staged from the seed.
 
 import { TIMER, PALETTE, ingredientById } from './config.js';
-import { addOrder, advanceTimers } from './state.js';
+import { addOrder, advanceTimers, updatePursuit } from './state.js';
 import { emitBurst, emitFlash } from './actions.js';
 
 function orderById(state, id) {
@@ -56,6 +56,10 @@ export function applyShot(state, query) {
     emitFlash(state, 770, 486, PALETTE.gold, 72);
     state.toast = { text: 'PLATED — CLICK TO SERVE', color: PALETTE.gold,
       until: state.now + 4000, x: 460, y: 216 };
+    state.player = { x: 850, y: 556, facing: -1, step: 1.2, moving: false, station: 'plate', tool: 'plate' };
+    state.satisfaction = 92;
+    state.orders.forEach((o, i) => { o.pursuitFloor = [0.18, 0.44, 0.3][i] || 0.2 });
+    updatePursuit(state);
     state.rush = 46;
   } else if (shot === 'prep') {
     advanceTimers(state, 700);
@@ -69,6 +73,10 @@ export function applyShot(state, query) {
     state.toast = { text: 'CHOP 3/' + TIMER.chopGoal, color: PALETTE.gold,
       until: state.now + 4000, x: 460, y: 216 };
     if (state.orders[1]) state.orders[1].remaining = Math.round(state.orders[1].total * 0.72);
+    state.player = { x: 300, y: 556, facing: 1, step: 2.4, moving: true, station: 'board', tool: 'knife' };
+    state.satisfaction = 74;
+    state.orders.forEach((o, i) => { o.pursuitFloor = [0.62, 0.36, 0.24][i] || 0.2 });
+    updatePursuit(state);
   } else if (shot === 'assembly') {
     advanceTimers(state, 600);
     const order = orderById(state, 2);
@@ -80,6 +88,10 @@ export function applyShot(state, query) {
     emitFlash(state, 476, 482, PALETTE.tealLight, 64);
     state.toast = { text: 'STIR 4/' + TIMER.stirGoal, color: PALETTE.tealLight,
       until: state.now + 4000, x: 460, y: 216 };
+    state.player = { x: 566, y: 556, facing: -1, step: 1.8, moving: true, station: 'pan', tool: 'spatula' };
+    state.satisfaction = 66;
+    state.orders.forEach((o, i) => { o.pursuitFloor = [0.3, 0.72, 0.4][i] || 0.2 });
+    updatePursuit(state);
     state.rush = 54;
   } else if (shot === 'service') {
     advanceTimers(state, 1200);
@@ -96,6 +108,12 @@ export function applyShot(state, query) {
     emitFlash(state, 770, 486, PALETTE.gold, 92);
     state.lastServe = { points: 315, name: order.name, until: state.now + 4000 };
     state.toast = { text: 'SERVED +315', color: PALETTE.gold, until: state.now + 4000, x: 460, y: 216 };
+    state.player = { x: 850, y: 556, facing: -1, step: 0.8, moving: false, station: 'plate', tool: 'plate' };
+    state.satisfaction = 38;
+    state.orders.forEach((o, i) => { o.pursuitFloor = [0.92, 0.6, 0.45][i] || 0.2 });
+    updatePursuit(state);
+    state.shake = 180;
+    state.expiryFlash = 260;
   }
   return state;
 }

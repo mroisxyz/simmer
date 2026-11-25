@@ -1,4 +1,4 @@
-// render.js — paints kitchen and tickets from state only; motion is a function of now.
+// render.js — paints kitchen, the walking chef, chasing tickets and satisfaction from state only; motion is a function of now.
 
 import { PALETTE as P, LAYOUT as L, TIMER, ingredientById as ing } from './config.js';
 import { binIds } from './actions.js';
@@ -104,6 +104,52 @@ function plate(c,state){
     if(state.active&&stepOf(state.active)==='plate')txt(c,'CLICK TO PLATE!',cx,p.y-14,16,P.gold,800,'center')}
 }
 
+// The house chef: round face, puffy hat, teal apron, and a tool for the station.
+function drawChef(c,state){
+  const p=state.player,bob=p.moving?Math.sin(p.step)*2:Math.sin(state.now/420)*1.2;
+  const shakeX=state.shake>0?Math.sin(state.now/26)*(state.shake/420)*5:0;
+  const swing=Math.sin(state.now/120)*4;
+  c.save();c.translate(p.x+shakeX,p.y+bob);c.scale(p.facing,1);
+  ell(c,0,3,32,9,P.shadow,null);
+  const stride=p.moving?Math.sin(p.step)*7:0;
+  box(c,-18,-26+stride,13,28,5,P.teal,P.ink,2);box(c,6,-26-stride,13,28,5,P.teal,P.ink,2);
+  ell(c,-12,2,10,5,P.ink,null);ell(c,12,2,10,5,P.ink,null);
+  box(c,-25,-78,50,54,12,'#F3E4C9',P.ink,3);
+  box(c,-18,-70,36,42,8,P.cream,P.tealLight,2);
+  box(c,-30,-72+swing,12,34,6,'#F2C79C',P.ink,2);box(c,18,-72-swing,12,34,6,'#F2C79C',P.ink,2);
+  if(p.tool==='knife'){box(c,26,-92,7,34,2,'#E8EDF0',P.ink,2);box(c,23,-60,13,16,4,P.woodDark,P.ink,2)}
+  else if(p.tool==='spatula'){box(c,26,-96,6,38,2,'#E8EDF0',P.ink,2);box(c,19,-104,20,10,3,P.panHi,P.ink,2)}
+  else ell(c,28,-62,16,6,P.plate,P.plateRim,2);
+  ell(c,0,-98,20,19,'#F2C79C',P.ink,3);
+  ell(c,-7,-101,2.5,3,P.ink,null);ell(c,7,-101,2.5,3,P.ink,null);
+  ell(c,-14,-94,4,3,'rgba(232,103,46,.45)',null);ell(c,14,-94,4,3,'rgba(232,103,46,.45)',null);
+  c.strokeStyle=P.ink;c.lineWidth=2;c.beginPath();c.arc(0,-96,7,.15,Math.PI-.15);c.stroke();
+  c.fillStyle=P.orange;c.beginPath();c.moveTo(-12,-82);c.lineTo(12,-82);c.lineTo(0,-68);c.closePath();c.fill();
+  box(c,-21,-128,42,13,5,P.cream,P.ink,3);
+  ell(c,-13,-136,13,11,P.cream,P.ink,2);ell(c,0,-141,15,12,P.cream,P.ink,2);ell(c,13,-136,13,11,P.cream,P.ink,2);
+  c.restore()
+}
+
+// Each ticket's arrow slides from the board toward the chef as its timer drains.
+function pursuitRails(c,state){
+  const p=state.player;
+  state.orders.forEach((order,i)=>{
+    const t={x:L.ticket.x,y:L.ticket.y+i*(L.ticket.h+L.ticket.gap)};
+    const ratio=Math.max(0,order.remaining/order.total),urgent=ratio<.25,pr=order.pursuit||0;
+    const sx=t.x+10,sy=t.y+76,ex=p.x,ey=p.y-58;
+    const bx=sx+(ex-sx)*pr,by=sy+(ey-sy)*pr;
+    c.save();c.globalAlpha=.32+pr*.34;c.strokeStyle=urgent?P.red:P.orange;c.lineWidth=urgent?3:2;
+    c.setLineDash([9,7]);c.beginPath();c.moveTo(sx,sy);c.lineTo(bx,by);c.stroke();c.setLineDash([]);
+    c.globalAlpha=.16;c.strokeStyle=P.cream;c.lineWidth=2;c.beginPath();c.moveTo(bx,by);c.lineTo(ex,ey);c.stroke();
+    c.globalAlpha=1;c.fillStyle=urgent?P.red:P.gold;
+    c.save();c.translate(bx,by);c.rotate(Math.atan2(ey-sy,ex-sx));
+    c.beginPath();c.moveTo(11,0);c.lineTo(-7,-7);c.lineTo(-7,7);c.closePath();c.fill();
+    c.strokeStyle=P.ink;c.lineWidth=1.5;c.stroke();c.restore();
+    if(pr>.62||urgent)txt(c,urgent?'! CLOSING IN':'CLOSING IN',bx+10,by-12,11,urgent?P.red:P.gold,800);
+    c.restore()
+  })
+}
+
 function orders(c,state){
   const o=L.order;
   box(c,o.x-12,o.y-34,o.w+24,o.h+48,14,P.woodDark,P.ink,5);
@@ -114,7 +160,9 @@ function orders(c,state){
     const t={x:L.ticket.x,y:L.ticket.y+i*(L.ticket.h+L.ticket.gap),w:L.ticket.w,h:L.ticket.h};
     const chosen=i===state.selected,r=Math.max(0,order.remaining/order.total);
     const bar=r>.55?P.teal:r>.25?P.gold:P.red;
-    box(c,t.x,t.y,t.w,t.h,10,chosen?'#FFFDF4':'#F3E8D2',chosen?P.gold:P.ink,chosen?5:3);
+    if(r<.25){c.shadowColor=P.red;c.shadowBlur=18}
+    box(c,t.x,t.y,t.w,t.h,10,chosen?'#FFFDF4':'#F3E8D2',r<.25?P.red:chosen?P.gold:P.ink,chosen?5:3);
+    c.shadowBlur=0;
     ell(c,t.x+18,t.y+18,8,8,chosen?P.orange:P.woodDark,P.ink,2);
     txt(c,'#'+order.id,t.x+36,t.y+19,14,P.inkSoft,800);
     txt(c,Math.ceil(order.remaining/1000)+'s',t.x+t.w-16,t.y+19,15,bar,800,'right');
@@ -131,7 +179,9 @@ function orders(c,state){
 export function drawKitchen(c,state){
   c.clearRect(0,0,L.width,L.height);wall(c);
   c.fillStyle='#2B1F1A';c.fillRect(916,0,L.width-916,L.height);
-  counter(c);bins(c,state);board(c,state);stove(c,state);plate(c,state);orders(c,state)
+  c.save();if(state.shake>0)c.translate(Math.sin(state.now/24)*(state.shake/420)*5,0);
+  counter(c);bins(c,state);board(c,state);stove(c,state);plate(c,state);orders(c,state);
+  pursuitRails(c,state);drawChef(c,state);c.restore()
 }
 
 export function drawHUD(c,state){
@@ -141,7 +191,15 @@ export function drawHUD(c,state){
   txt(c,'SERVED '+state.served,520,30,15,P.cream,800);txt(c,'COMBO x'+state.combo,650,30,17,state.combo>1?P.orangeLight:P.grout,800);
   txt(c,'RUSH',810,18,12,P.grout,700);box(c,810,30,150,14,7,'#4A3830',null);
   box(c,810,30,Math.max(4,150*state.rush/100),14,7,state.rush>66?P.red:state.rush>33?P.gold:P.teal,null);
-  txt(c,'SHIFT 01',1120,30,16,P.cream,800,'center');
+  const sat=Math.max(0,Math.min(100,state.satisfaction||0)),satCol=sat>60?P.teal:sat>30?P.gold:P.red;
+  txt(c,'SATISFACTION '+Math.round(sat)+'%',1000,12,12,satCol,800);
+  box(c,1000,24,215,17,8,'#4A3830',null);
+  box(c,1000,24,Math.max(5,215*sat/100),17,8,satCol,null);
+  ell(c,1245,32,15,15,P.gold,P.ink,2);
+  ell(c,1240,29,2,2.5,P.ink,null);ell(c,1250,29,2,2.5,P.ink,null);
+  c.strokeStyle=P.ink;c.lineWidth=2;c.beginPath();
+  if(sat>55)c.arc(1245,33,6,.15,Math.PI-.15);else c.arc(1245,43,6,Math.PI+.15,Math.PI*2-.15);
+  c.stroke();
   if(state.rush>66){c.globalAlpha=(.5+.5*Math.sin(state.now/220))*.16;c.fillStyle=P.red;c.fillRect(0,62,L.width,6);c.globalAlpha=1}
   const y=L.footer.y,order=selectedOrder(state);
   box(c,0,y,L.width,L.footer.h,0,P.night,null);
@@ -149,7 +207,7 @@ export function drawHUD(c,state){
   const s=state.active?stepOf(state.active):'pick';
   const hint=s==='pick'?'CLICK THE HIGHLIGHTED BINS IN RECIPE ORDER':s==='chop'?'CLICK / DRAG THE CHOPPING BOARD':s==='stir'?'DRAG IN CIRCLES INSIDE THE PAN':s==='flip'?'PRESS SPACE OR CLICK THE PAN TO FLIP':state.plated?'CLICK THE PLATE TO SERVE':'CLICK THE PLATE TO PLATE THE DISH';
   txt(c,hint,22,y+84,15,P.gold,700);
-  txt(c,'[1][2][3] TICKET   SPACE FLIP   ENTER SERVE   R RESTART',L.width-22,y+30,13,P.grout,700,'right');
+  txt(c,'WASD / ARROWS MOVE CHEF   [1][2][3] TICKETS   SPACE FLIP   ENTER SERVE',L.width-22,y+30,13,P.grout,700,'right');
   txt(c,'CHOP  >  STIR  >  FLIP  >  PLATE  >  SERVE',L.width-22,y+60,14,P.tealLight,700,'right');
   if(state.toast&&state.toast.until>state.now){const t=state.toast,w=250+t.text.length,tx=t.x??460,ty=t.y??216;
     box(c,tx-w/2,ty-20,w,40,12,P.night,t.color,3);txt(c,t.text,tx,ty,20,t.color,800,'center')}
@@ -157,6 +215,8 @@ export function drawHUD(c,state){
 }
 
 export function drawParticles(c,state){
+  if(state.expiryFlash>0){c.globalAlpha=(state.expiryFlash/520)*.28;c.fillStyle=P.red;
+    c.fillRect(0,L.hud.h,L.width,L.footer.y-L.hud.h);c.globalAlpha=1}
   for(const f of state.flashes){const a=Math.max(0,f.life/f.maxLife);c.globalAlpha=a*.75;c.strokeStyle=f.color;c.lineWidth=5;
     c.beginPath();c.arc(f.x,f.y,f.r*(1.4-a*.4),0,Math.PI*2);c.stroke();c.globalAlpha=a*.16;c.fillStyle=f.color;c.fill()}
   c.globalAlpha=1;

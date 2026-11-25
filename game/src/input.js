@@ -2,7 +2,7 @@
 // The pointer is rescaled from CSS pixels to the fixed 1280x720 canvas grid.
 
 import { LAYOUT } from './config.js';
-import { selectTicket } from './state.js';
+import { selectTicket, movePlayer } from './state.js';
 
 export function inRect(p, r) {
   return p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
@@ -102,7 +102,12 @@ export function attachInput(canvas, state, actions, hooks = {}) {
   });
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
+  // Movement keys are held; a fixed-step frame loop walks the chef without a clock.
+  const held = new Set();
+  const walkKeys = ['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright'];
   window.addEventListener('keydown', (e) => {
+    const key = e.key.toLowerCase();
+    if (walkKeys.includes(key)) { held.add(key); e.preventDefault(); return; }
     if (e.repeat) return;
     if (e.key === '1' || e.key === '2' || e.key === '3') {
       actions.selectTicketAt(state, Number(e.key) - 1);
@@ -112,8 +117,20 @@ export function attachInput(canvas, state, actions, hooks = {}) {
     } else if (e.key === 'Enter') {
       e.preventDefault();
       actions.serve(state);
-    } else if (e.key.toLowerCase() === 'r') {
+    } else if (key === 'r') {
       if (hooks.onRestart) hooks.onRestart();
     }
   });
+  window.addEventListener('keyup', (e) => held.delete(e.key.toLowerCase()));
+  window.addEventListener('blur', () => held.clear());
+
+  function walkFrame() {
+    const dx = (held.has('d') || held.has('arrowright') ? 1 : 0) -
+      (held.has('a') || held.has('arrowleft') ? 1 : 0);
+    const dy = (held.has('s') || held.has('arrowdown') ? 1 : 0) -
+      (held.has('w') || held.has('arrowup') ? 1 : 0);
+    if (dx || dy) movePlayer(state, dx * 4.2, dy * 4.2);
+    window.requestAnimationFrame(walkFrame);
+  }
+  window.requestAnimationFrame(walkFrame);
 }

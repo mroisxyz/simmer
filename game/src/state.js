@@ -1,7 +1,7 @@
-// state.js — the simulation. No clocks, no Math.random: every order, timer and
-// particle lifetime is driven by an explicit dt so a seed always replays the same shift.
+// state.js — the simulation. No clocks or built-in randomness: every order, timer
+// and particle lifetime is driven by an explicit dt, so a seed replays the same shift.
 
-import { RECIPES, TIMER } from './config.js';
+import { RECIPES, TIMER, LAYOUT } from './config.js';
 
 export function makeRandom(seed) {
   let s = seed >>> 0;
@@ -57,7 +57,11 @@ export function createState(seed = 7) {
     served: 0,
     missed: 0,
     rush: 8,
+    satisfaction: 72,
+    shake: 0,
+    expiryFlash: 0,
     selected: 0,
+    player: { x: 566, y: 556, facing: -1, step: 0, moving: false, station: 'pan', tool: 'spatula' },
     active: null,
     plated: null,
     particles: [],
@@ -82,6 +86,43 @@ export function selectTicket(state, index) {
   if (index >= 0 && index < state.orders.length) {
     state.selected = index;
     setToast(state, 'TICKET ' + (index + 1) + ' SELECTED', '#6BC8AE');
+  }
+}
+
+// WASD/arrow input moves the chef inside the walkable counter strip.
+export function movePlayer(state, dx, dy) {
+  const p = state.player;
+  p.x = Math.max(62, Math.min(890, p.x + dx));
+  p.y = Math.max(400, Math.min(592, p.y + dy));
+  if (dx) p.facing = dx > 0 ? 1 : -1;
+  p.moving = dx !== 0 || dy !== 0;
+  if (p.moving) p.step += 0.24;
+  const spots = [
+    { name: 'board', x: 300, y: 556, tool: 'knife' },
+    { name: 'pan', x: 566, y: 556, tool: 'spatula' },
+    { name: 'plate', x: 850, y: 556, tool: 'plate' },
+  ];
+  let best = spots[0], bestDist = Infinity;
+  for (const s of spots) {
+    const d = Math.abs(s.x - p.x) + Math.abs(s.y - p.y) * 0.5;
+    if (d < bestDist) { best = s; bestDist = d; }
+  }
+  if (bestDist < 260) { p.station = best.name; p.tool = best.tool; }
+  return p;
+}
+
+// Tickets "chase" the chef: urgency plus distance from the board sets how far
+// each ticket's arrow has slid along its rail. A preset can set pursuitFloor.
+export function updatePursuit(state) {
+  const p = state.player;
+  const boardX = LAYOUT.order.x + 40, boardY = LAYOUT.order.y + LAYOUT.order.h / 2;
+  for (const order of state.orders) {
+    const left = Math.max(0, Math.min(1, order.remaining / order.total));
+    const urgency = 1 - left;
+    const distance = Math.min(1, (Math.abs(p.x - boardX) / 900 + Math.abs(p.y - boardY) / 700));
+    const wobble = (order.id % 3) * 0.03;
+    order.pursuit = Math.min(1, Math.max(order.pursuitFloor || 0,
+      urgency * 0.72 + distance * 0.24 + wobble));
   }
 }
 
@@ -151,6 +192,9 @@ export function advanceTimers(state, dtMs) {
       state.orders.splice(i, 1);
       state.missed++;
       state.combo = 0;
+      state.satisfaction = Math.max(0, state.satisfaction - 22);
+      state.shake = 420;
+      state.expiryFlash = 520;
       state.rush = Math.min(100, state.rush + 20);
       setToast(state, 'ORDER LOST!', '#D8483C');
     }
@@ -165,6 +209,9 @@ export function advanceTimers(state, dtMs) {
   }
 
   state.rush = Math.min(100, state.rush + (dt / 1000) * TIMER.rushRampPerSecond);
+  state.shake = Math.max(0, state.shake - dt);
+  state.expiryFlash = Math.max(0, state.expiryFlash - dt);
+  updatePursuit(state);
   if (state.active) state.active.elapsed += dt;
 
   for (let i = state.particles.length - 1; i >= 0; i--) {

@@ -166,13 +166,18 @@ export function serve(state) {
   if (!order) {
     state.plated = null;
     state.combo = 0;
+    state.satisfaction = Math.max(0, state.satisfaction - 16);
+    state.shake = 340;
+    state.expiryFlash = 420;
+    emitBurst(state, c.x, c.y, [PALETTE.red, PALETTE.ink], 14, 150);
     emitFlash(state, c.x, c.y, PALETTE.red, 60);
-    return setToast(state, 'TICKET GONE — PLATE CLEARED', '#D8483C');
+    return setToast(state, 'WRONG DISH — SATISFACTION DOWN', '#D8483C');
   }
   const ratio = Math.max(0, order.remaining / order.total);
   const gained = scoreOrder(state, order, ratio);
   state.plated = null;
-  emitBurst(state, c.x, c.y, [PALETTE.gold, PALETTE.cream, dish.color], 26, 210);
+  state.satisfaction = Math.min(100, state.satisfaction + 12 + Math.round(ratio * 8));
+  emitBurst(state, c.x, c.y, [PALETTE.gold, PALETTE.cream, dish.color, '#F29CB5'], 26, 210);
   emitFlash(state, c.x, c.y, PALETTE.gold, 88);
   setToast(state, 'SERVED +' + gained, PALETTE.gold);
 }
