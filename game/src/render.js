@@ -1,10 +1,12 @@
 // render.js — paints the kitchen, chef, chasing tickets and HUD from state only.
-// customers and recipe-board overlays are injected by main.js; motion is a function of state.now.
+// customers and recipe-board overlays are injected by main.js; plated food comes from foodart.js.
+// All motion and warnings are functions of state.now, so capture presets stay deterministic.
 
 import { PALETTE as P, LAYOUT as L, TIMER, ingredientById as ing } from './config.js';
 import { binIds } from './actions.js';
 import { currentStep as stepOf, selectedOrder } from './state.js';
 import { hitTest } from './input.js';
+import { drawFinishedDish } from './foodart.js';
 
 function rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath()}
 function box(c,x,y,w,h,r,f,s=P.ink,lw=3){rr(c,x,y,w,h,r);c.fillStyle=f;c.fill();if(s){c.lineWidth=lw;c.strokeStyle=s;c.stroke()}}
@@ -101,8 +103,16 @@ function stove(c,state){
 function plate(c,state){
   const p=L.plate,cx=p.x+p.w/2,cy=p.y+p.h/2,d=state.plated;
   ell(c,cx,cy+8,82,56,P.shadow,null);ell(c,cx,cy,82,58,P.plate,P.plateRim,5);ell(c,cx,cy,62,42,'#F4EEE0',P.plateRim,2);
-  if(d){d.items.forEach((id,i)=>{const a=(i/d.items.length)*Math.PI*2;drawFood(c,ing(id),cx+Math.cos(a)*26,cy+Math.sin(a)*14-6,17,a)});
-    ell(c,cx,cy-12,17,11,d.color,P.ink,2);txt(c,'READY',cx,p.y-12,18,P.gold,800,'center');txt(c,'CLICK TO SERVE',cx,p.y+p.h+14,13,P.cream,800,'center')}
+  if(d){
+    const pulse=.5+.5*Math.sin(state.now/260);
+    c.save();c.globalAlpha=.35+.45*pulse;c.strokeStyle=P.gold;c.lineWidth=4;c.setLineDash([12,8]);
+    c.beginPath();c.ellipse(cx,cy,88+pulse*5,64+pulse*4,0,0,Math.PI*2);c.stroke();c.setLineDash([]);c.restore();
+    drawFinishedDish(c,d,cx,cy-2,17,state.now);
+    txt(c,'READY',cx,p.y-12,18,P.gold,800,'center');txt(c,'CLICK TO SERVE',cx,p.y+p.h+14,13,P.cream,800,'center');
+    if(state.plateQuality){const q=state.plateQuality;
+      box(c,p.x+8,p.y+16,84,22,11,P.night,q==='PERFECT'?P.teal:P.gold,2);
+      txt(c,q,p.x+50,p.y+27,11,q==='PERFECT'?P.tealLight:P.gold,800,'center')}
+  }
   else{txt(c,'PLATE',cx,p.y+p.h+16,14,P.cream,700,'center');
     if(state.active&&stepOf(state.active)==='plate')txt(c,'CLICK TO PLATE!',cx,p.y-14,16,P.gold,800,'center')}
 }
@@ -137,6 +147,7 @@ function drawChef(c,state){
 // Each ticket's arrow slides from the board toward the chef as its timer drains.
 function pursuitRails(c,state){
   const p=state.player;
+  let warnings=0,anyHot=false;
   state.orders.forEach((order,i)=>{
     const t={x:L.ticket.x,y:L.ticket.y+i*(L.ticket.h+L.ticket.gap)};
     const ratio=Math.max(0,order.remaining/order.total),urgent=ratio<.25,pr=order.pursuit||0;
@@ -149,9 +160,11 @@ function pursuitRails(c,state){
     c.save();c.translate(bx,by);c.rotate(Math.atan2(ey-sy,ex-sx));
     c.beginPath();c.moveTo(11,0);c.lineTo(-7,-7);c.lineTo(-7,7);c.closePath();c.fill();
     c.strokeStyle=P.ink;c.lineWidth=1.5;c.stroke();c.restore();
-    if(pr>.62||urgent)txt(c,urgent?'! CLOSING IN':'CLOSING IN',bx+10,by-12,11,urgent?P.red:P.gold,800);
+    if(pr>.62||urgent){warnings++;if(urgent)anyHot=true}
     c.restore()
   })
+  // One callout in empty wall space: never over the chef, plate, pan or tickets.
+  if(warnings)txt(c,(anyHot?'! ':'')+warnings+' CLOSING IN',44,104,13,anyHot?P.red:P.gold,800,'left')
 }
 
 function orders(c,state){

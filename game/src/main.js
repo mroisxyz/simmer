@@ -1,5 +1,6 @@
 // main.js — boot only: read the URL, build the state, wire input, run the frame loop.
 // A ?shot=... URL freezes time so a preset frame can be captured byte-for-byte.
+// foodart.js is pulled in by render.js; all module paths here and there are relative.
 
 import { createState, advanceTimers } from './state.js';
 import { applyShot } from './shots.js';

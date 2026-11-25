@@ -50,6 +50,7 @@ export function applyShot(state, query) {
     const serveOrder = orderById(state, 2);
     stageActive(state, panOrder, 1, { stir: 3 });
     stagePlate(state, serveOrder);
+    state.plateQuality = 'PERFECT';
     state.selected = 0;
     flavor(state, 476, 482, panOrder.items, 12, 120);
     flavor(state, 770, 486, serveOrder.items, 14, 150);
@@ -105,6 +106,7 @@ export function applyShot(state, query) {
     advanceTimers(state, 1200);
     const order = orderById(state, 1);
     stagePlate(state, order);
+    state.plateQuality = 'FRESH';
     state.selected = 0;
     state.orders.forEach((o, i) => { o.remaining = Math.round(o.total * (i === 0 ? 0.16 : 0.44)); });
     state.score = 1285;
