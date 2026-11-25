@@ -6,6 +6,10 @@ import { applyShot } from './shots.js';
 import { attachInput } from './input.js';
 import * as actions from './actions.js';
 import { render } from './render.js';
+import { drawCustomers } from './customers.js';
+import { drawRecipeBoard } from './recipebook.js';
+
+const overlays = { customers: drawCustomers, recipeBoard: drawRecipeBoard };
 
 const params = new URLSearchParams(window.location.search);
 const seed = Number.parseInt(params.get('seed') || '7', 10) || 7;
@@ -32,7 +36,7 @@ function frame(now) {
   const dt = frozen ? 0 : Math.min(120, now - lastFrame);
   lastFrame = now;
   advanceTimers(state, dt);
-  render(ctx, state);
+  render(ctx, state, overlays);
   window.requestAnimationFrame(frame);
 }
 

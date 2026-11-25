@@ -1,4 +1,5 @@
-// render.js — paints kitchen, the walking chef, chasing tickets and satisfaction from state only; motion is a function of now.
+// render.js — paints the kitchen, chef, chasing tickets and HUD from state only.
+// customers and recipe-board overlays are injected by main.js; motion is a function of state.now.
 
 import { PALETTE as P, LAYOUT as L, TIMER, ingredientById as ing } from './config.js';
 import { binIds } from './actions.js';
@@ -13,7 +14,9 @@ function ell(c,x,y,rx,ry,f,s,lw=3){c.beginPath();c.ellipse(x,y,rx,ry,0,0,Math.PI
 export function drawFood(c,g,x,y,s,spin=0){
   if(!g)return;const col=g.color,acc=g.accent;
   c.save();c.translate(x,y);c.rotate(spin);c.lineWidth=Math.max(2,s*.12);c.strokeStyle=acc;
-  if(g.shape==='round'){ell(c,0,0,s,s*.86,col,acc);ell(c,-s*.32,-s*.3,s*.22,s*.14,'rgba(255,255,255,.75)')}
+  c.shadowColor='rgba(60,37,25,0.25)';c.shadowBlur=5;c.shadowOffsetY=2;
+  const grad=c.createLinearGradient(-s,-s,s,s);grad.addColorStop(0,'#FFFFFF');grad.addColorStop(.3,col);grad.addColorStop(1,acc);
+  if(g.shape==='round'){ell(c,0,0,s,s*.86,grad,acc);c.shadowBlur=0;ell(c,-s*.32,-s*.3,s*.22,s*.14,'rgba(255,255,255,.75)')}
   else if(g.shape==='strip'){rr(c,-s,-s*.36,s*2,s*.72,s*.34);c.fillStyle=col;c.fill();c.stroke();c.beginPath();c.moveTo(-s*.5,-s*.3);c.lineTo(-s*.3,s*.3);c.moveTo(s*.2,-s*.3);c.lineTo(s*.4,s*.3);c.stroke()}
   else if(g.shape==='cube'){rr(c,-s*.8,-s*.7,s*1.6,s*1.5,s*.22);c.fillStyle=col;c.fill();c.stroke();c.beginPath();c.moveTo(-s*.8,-s*.2);c.lineTo(s*.8,-s*.2);c.stroke()}
   else if(g.shape==='grain'){for(let i=0;i<7;i++){const a=i*2.4;ell(c,Math.cos(a)*s*.55,Math.sin(a)*s*.45,s*.2,s*.27,i%2?acc:col,null)}}
@@ -29,14 +32,9 @@ function wall(c){
   c.strokeStyle=P.grout;c.lineWidth=2;
   for(let y=62;y<L.wallBottom;y+=46){c.beginPath();c.moveTo(0,y);c.lineTo(920,y);c.stroke()}
   for(let x=0;x<920;x+=64){c.beginPath();c.moveTo(x,62);c.lineTo(x,L.wallBottom);c.stroke()}
-  box(c,700,76,186,128,12,'#BFE3E7',P.woodDark,6);
-  c.fillStyle='#D9F0EE';c.fillRect(708,84,170,112);ell(c,838,122,20,20,P.gold,null);ell(c,748,168,34,12,P.cream,null);
-  c.strokeStyle=P.woodDark;c.lineWidth=5;c.beginPath();c.moveTo(793,80);c.lineTo(793,200);c.moveTo(704,140);c.lineTo(882,140);c.stroke();
   box(c,40,172,470,14,5,P.woodDark,P.ink,3);
   const jars=['#E8672E','#2E8C7B','#F3C44E','#C0468C','#8FD14F'];
   for(let i=0;i<jars.length;i++){const x=68+i*88;box(c,x,126,48,46,8,'rgba(255,255,255,.65)',P.ink,3);box(c,x+4,142,40,28,4,jars[i],null);box(c,x-2,118,52,10,3,P.woodLight,P.ink,2)}
-  c.strokeStyle=P.ink;c.lineWidth=4;
-  for(let i=0;i<4;i++){const x=586+i*28;c.beginPath();c.moveTo(x,64);c.lineTo(x,134);c.stroke();ell(c,x,150,11,17,i%2?P.panHi:P.pan,P.ink,3)}
 }
 
 function counter(c){
@@ -87,6 +85,11 @@ function stove(c,state){
   ell(c,cx,cy+8,92,54,'#22282D',P.ink,4);ell(c,cx,cy,92,50,P.pan,P.panHi,4);ell(c,cx,cy,76,38,'#2B3238',null);
   if(d&&d.picked.length){const sw=Math.sin(state.now/220)*12;d.picked.forEach((id,i)=>{const a=(i/d.picked.length)*Math.PI*2+state.now/1400;drawFood(c,ing(id),cx+Math.cos(a)*35,cy+Math.sin(a)*17+sw*.2,15,a)})}
   else ell(c,cx,cy,44,18,'rgba(255,122,56,.35)',null);
+  c.save();c.lineWidth=4;c.lineCap='round';
+  for(let i=0;i<3;i++){const sx=cx-30+i*30,phase=(state.now/700+i*.33)%1;
+    c.globalAlpha=.42*(1-phase);c.strokeStyle=i===1?'#FFF6E6':P.cream;
+    c.beginPath();c.moveTo(sx,cy-26);c.bezierCurveTo(sx-14,cy-50-phase*22,sx+16,cy-72-phase*30,sx,cy-96-phase*34);c.stroke()}
+  c.restore();
   if(d&&stepOf(d)==='stir'){c.strokeStyle=P.tealLight;c.lineWidth=4;c.beginPath();c.arc(cx,cy,58,state.now/260,state.now/260+1.6);c.stroke()}
   if(d&&stepOf(d)==='flip')for(let i=0;i<3;i++){const t=(state.now/300+i)%3;c.strokeStyle=P.gold;c.lineWidth=3;c.beginPath();c.arc(cx-40+t*40,cy-t*14,9,.2,2.6);c.stroke()}
   txt(c,d?stepOf(d).toUpperCase()+'  '+count(d):'PAN READY',cx,s.y+8,16,P.cream,800,'center');
@@ -114,7 +117,8 @@ function drawChef(c,state){
   const stride=p.moving?Math.sin(p.step)*7:0;
   box(c,-18,-26+stride,13,28,5,P.teal,P.ink,2);box(c,6,-26-stride,13,28,5,P.teal,P.ink,2);
   ell(c,-12,2,10,5,P.ink,null);ell(c,12,2,10,5,P.ink,null);
-  box(c,-25,-78,50,54,12,'#F3E4C9',P.ink,3);
+  const ag=c.createLinearGradient(-25,-78,25,-24);ag.addColorStop(0,'#FFF8E8');ag.addColorStop(1,'#D8B991');
+  box(c,-25,-78,50,54,12,ag,P.ink,3);
   box(c,-18,-70,36,42,8,P.cream,P.tealLight,2);
   box(c,-30,-72+swing,12,34,6,'#F2C79C',P.ink,2);box(c,18,-72-swing,12,34,6,'#F2C79C',P.ink,2);
   if(p.tool==='knife'){box(c,26,-92,7,34,2,'#E8EDF0',P.ink,2);box(c,23,-60,13,16,4,P.woodDark,P.ink,2)}
@@ -169,8 +173,10 @@ function orders(c,state){
     txt(c,order.name,t.x+16,t.y+48,19,P.ink,800);
     order.items.forEach((id,k)=>{const g=ing(id);ell(c,t.x+24+k*26,t.y+82,10,10,g.color,P.ink,2);drawFood(c,g,t.x+24+k*26,t.y+82,6)});
     txt(c,'+'+order.worth,t.x+t.w-16,t.y+82,15,P.teal,800,'right');
+    const pulse=r<.25?.72+.28*Math.sin(state.now/110):1;
+    if(r<.25){c.shadowColor=P.red;c.shadowBlur=14*pulse}
     box(c,t.x+16,t.y+108,t.w-32,14,6,'#D9C9AC',null);
-    box(c,t.x+16,t.y+108,Math.max(4,(t.w-32)*r),14,6,bar,null);
+    box(c,t.x+16,t.y+108,Math.max(4,(t.w-32)*r),14,6,bar,null);c.shadowBlur=0;
     txt(c,order.steps.join(' > ').toUpperCase(),t.x+16,t.y+134,12,P.inkSoft,700);
     if(chosen){c.fillStyle=P.gold;c.beginPath();c.moveTo(t.x-18,t.y+56);c.lineTo(t.x-2,t.y+46);c.lineTo(t.x-2,t.y+66);c.closePath();c.fill()}
   })
@@ -189,6 +195,13 @@ export function drawHUD(c,state){
   txt(c,'SIMMER & SERVE',22,30,25,P.cream,800);
   txt(c,'SCORE',360,18,12,P.grout,700);txt(c,String(state.score).padStart(5,'0'),360,40,27,P.gold,800);
   txt(c,'SERVED '+state.served,520,30,15,P.cream,800);txt(c,'COMBO x'+state.combo,650,30,17,state.combo>1?P.orangeLight:P.grout,800);
+  if(state.combo>1){const bx=300,by=70,bw=170,bh=38;
+    c.save();c.globalAlpha=.62+.38*(.5+.5*Math.sin(state.now/140));
+    box(c,bx,by,bw,bh,12,P.night,P.orange,3);
+    txt(c,'COMBO x'+state.combo,bx+bw/2,by+19,19,P.gold,800,'center');
+    c.fillStyle=P.cream;c.beginPath();c.moveTo(bx+14,by+8);c.lineTo(bx+17,by+15);
+    c.lineTo(bx+24,by+18);c.lineTo(bx+17,by+21);c.lineTo(bx+14,by+28);
+    c.lineTo(bx+11,by+21);c.lineTo(bx+4,by+18);c.lineTo(bx+11,by+15);c.closePath();c.fill();c.restore()}
   txt(c,'RUSH',810,18,12,P.grout,700);box(c,810,30,150,14,7,'#4A3830',null);
   box(c,810,30,Math.max(4,150*state.rush/100),14,7,state.rush>66?P.red:state.rush>33?P.gold:P.teal,null);
   const sat=Math.max(0,Math.min(100,state.satisfaction||0)),satCol=sat>60?P.teal:sat>30?P.gold:P.red;
@@ -209,7 +222,7 @@ export function drawHUD(c,state){
   txt(c,hint,22,y+84,15,P.gold,700);
   txt(c,'WASD / ARROWS MOVE CHEF   [1][2][3] TICKETS   SPACE FLIP   ENTER SERVE',L.width-22,y+30,13,P.grout,700,'right');
   txt(c,'CHOP  >  STIR  >  FLIP  >  PLATE  >  SERVE',L.width-22,y+60,14,P.tealLight,700,'right');
-  if(state.toast&&state.toast.until>state.now){const t=state.toast,w=250+t.text.length,tx=t.x??460,ty=t.y??216;
+  if(state.toast&&state.toast.until>state.now){const t=state.toast,w=250+t.text.length,tx=t.x??680,ty=t.y??230;
     box(c,tx-w/2,ty-20,w,40,12,P.night,t.color,3);txt(c,t.text,tx,ty,20,t.color,800,'center')}
   if(state.lastServe&&state.lastServe.until>state.now)txt(c,'+'+state.lastServe.points,520,y+84,22,P.gold,800)
 }
@@ -225,4 +238,10 @@ export function drawParticles(c,state){
   c.globalAlpha=1
 }
 
-export function render(c,state){drawKitchen(c,state);drawParticles(c,state);drawHUD(c,state)}
+export function render(c,state,overlays={}){
+  drawKitchen(c,state);
+  // Drop the recipe strip below the jar shelf without covering bins or the board.
+  if(overlays.recipeBoard){c.save();c.translate(0,12);overlays.recipeBoard(c,state);c.restore()}
+  if(overlays.customers)overlays.customers(c,state);
+  drawParticles(c,state);drawHUD(c,state)
+}
