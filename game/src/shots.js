@@ -55,7 +55,7 @@ export function applyShot(state, query) {
     flavor(state, 770, 486, serveOrder.items, 14, 150);
     emitFlash(state, 770, 486, PALETTE.gold, 72);
     state.toast = { text: 'PLATED — CLICK TO SERVE', color: PALETTE.gold,
-      until: state.now + 4000 };
+      until: state.now + 4000, x: 460, y: 216 };
     state.rush = 46;
   } else if (shot === 'prep') {
     advanceTimers(state, 700);
@@ -67,7 +67,7 @@ export function applyShot(state, query) {
     flavor(state, 196, 470, order.items, 22, 240);
     emitFlash(state, 196, 470, PALETTE.orangeLight, 60);
     state.toast = { text: 'CHOP 3/' + TIMER.chopGoal, color: PALETTE.gold,
-      until: state.now + 4000 };
+      until: state.now + 4000, x: 460, y: 216 };
     if (state.orders[1]) state.orders[1].remaining = Math.round(state.orders[1].total * 0.72);
   } else if (shot === 'assembly') {
     advanceTimers(state, 600);
@@ -79,7 +79,7 @@ export function applyShot(state, query) {
     flavor(state, 476, 482, order.items, 16, 110);
     emitFlash(state, 476, 482, PALETTE.tealLight, 64);
     state.toast = { text: 'STIR 4/' + TIMER.stirGoal, color: PALETTE.tealLight,
-      until: state.now + 4000 };
+      until: state.now + 4000, x: 460, y: 216 };
     state.rush = 54;
   } else if (shot === 'service') {
     advanceTimers(state, 1200);
@@ -95,7 +95,7 @@ export function applyShot(state, query) {
     flavor(state, 770, 486, order.items, 26, 200);
     emitFlash(state, 770, 486, PALETTE.gold, 92);
     state.lastServe = { points: 315, name: order.name, until: state.now + 4000 };
-    state.toast = { text: 'SERVED +315', color: PALETTE.gold, until: state.now + 4000 };
+    state.toast = { text: 'SERVED +315', color: PALETTE.gold, until: state.now + 4000, x: 460, y: 216 };
   }
   return state;
 }

@@ -151,8 +151,8 @@ export function drawHUD(c,state){
   txt(c,hint,22,y+84,15,P.gold,700);
   txt(c,'[1][2][3] TICKET   SPACE FLIP   ENTER SERVE   R RESTART',L.width-22,y+30,13,P.grout,700,'right');
   txt(c,'CHOP  >  STIR  >  FLIP  >  PLATE  >  SERVE',L.width-22,y+60,14,P.tealLight,700,'right');
-  if(state.toast&&state.toast.until>state.now){const t=state.toast,w=250+t.text.length;
-    box(c,L.width/2-w/2,y-46,w,40,12,P.night,t.color,3);txt(c,t.text,L.width/2,y-26,20,t.color,800,'center')}
+  if(state.toast&&state.toast.until>state.now){const t=state.toast,w=250+t.text.length,tx=t.x??460,ty=t.y??216;
+    box(c,tx-w/2,ty-20,w,40,12,P.night,t.color,3);txt(c,t.text,tx,ty,20,t.color,800,'center')}
   if(state.lastServe&&state.lastServe.until>state.now)txt(c,'+'+state.lastServe.points,520,y+84,22,P.gold,800)
 }
 
