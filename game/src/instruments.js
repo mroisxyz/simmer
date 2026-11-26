@@ -92,6 +92,7 @@ function drawTape(ctx, x, y, w, h, value, step, pixelsPerUnit, label, format) {
   ctx.strokeRect(x, y, w, h);
 }
 
+// Six labels at 60 degrees keep every heading readable inside the bezel.
 function drawCompass(ctx, state, x, y, r) {
   const heading = (wrapAngle(state.plane.hdg) * 180 / Math.PI + 360) % 360;
   bezel(ctx, x, y, r, '#10222b');
@@ -99,24 +100,27 @@ function drawCompass(ctx, state, x, y, r) {
   ctx.beginPath(); ctx.arc(x, y, r - 2, 0, Math.PI * 2); ctx.clip();
   ctx.translate(x, y);
   ctx.rotate(-heading * Math.PI / 180);
-  const marks = ['N', '030', '060', 'E', '120', '150', 'S', '210', '240', 'W', '300', '330'];
+  const marks = ['N', '060', '120', 'S', '240', '300'];
   for (let i = 0; i < 36; i++) {
     const a = i * Math.PI / 18;
-    const major = i % 3 === 0;
-    const rr = r - (major ? 9 : 5);
-    ctx.strokeStyle = major ? '#c8e7d2' : '#5a8a7c';
-    ctx.lineWidth = major ? 2 : 1;
+    const cardinal = i % 9 === 0;
+    const major = i % 6 === 0;
+    const medium = i % 3 === 0;
+    const rr = r - (cardinal ? 11 : major ? 8 : medium ? 6 : 4);
+    ctx.strokeStyle = cardinal ? '#d8f0dc' : major ? '#c8e7d2' : medium ? '#9fc9b4' : '#5a8a7c';
+    ctx.lineWidth = cardinal ? 2 : major ? 1.6 : 1;
     ctx.beginPath();
     ctx.moveTo(Math.sin(a) * rr, -Math.cos(a) * rr);
     ctx.lineTo(Math.sin(a) * (r - 3), -Math.cos(a) * (r - 3));
     ctx.stroke();
   }
   ctx.fillStyle = '#d8f0dc';
-  ctx.font = 'bold 11px ui-monospace, monospace';
   ctx.textAlign = 'center';
   for (let i = 0; i < marks.length; i++) {
-    const a = i * Math.PI / 6;
-    ctx.fillText(marks[i], Math.sin(a) * (r - 21), -Math.cos(a) * (r - 21) + 4);
+    const a = i * Math.PI / 3;
+    const label = marks[i];
+    ctx.font = label.length === 1 ? 'bold 12px ui-monospace, monospace' : 'bold 10px ui-monospace, monospace';
+    ctx.fillText(label, Math.sin(a) * (r - 17), -Math.cos(a) * (r - 17) + 4);
   }
   ctx.restore();
   ctx.fillStyle = PALETTE.gold;
@@ -124,7 +128,7 @@ function drawCompass(ctx, state, x, y, r) {
   ctx.moveTo(x, y - r + 2); ctx.lineTo(x - 6, y - r + 13); ctx.lineTo(x + 6, y - r + 13);
   ctx.closePath(); ctx.fill();
   ctx.fillStyle = '#0a151b';
-  ctx.fillRect(x - 25, y - 10, 50, 20);
+  ctx.fillRect(x - 23, y - 10, 46, 20);
   ctx.fillStyle = PALETTE.hud;
   ctx.font = 'bold 15px ui-monospace, monospace';
   ctx.textAlign = 'center';
@@ -195,7 +199,7 @@ export function drawPanel(ctx, state) {
   drawAttitude(ctx, state, 128, 654, 51);
   drawTape(ctx, 232, 616, 118, 76, state.plane.spd, 10, 0.72, 'AIRSPEED  m/s', (v) => String(Math.round(v)).padStart(3, '0'));
   drawTape(ctx, 706, 616, 118, 76, clamp(state.plane.y * 3.28, 0, 9999), 200, 0.16, 'ALTITUDE  ft', (v) => String(Math.round(v)).padStart(4, '0'));
-  drawCompass(ctx, state, 500, 654, 44);
+  drawCompass(ctx, state, 500, 654, 48);
   drawFuelAndDamage(ctx, state);
 }
 
