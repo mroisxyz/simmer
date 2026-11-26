@@ -1,0 +1,6 @@
+[
+  { "file": "1-cruise.png", "query": "?shot=cruise&seed=11", "url": "?shot=cruise&seed=11", "shot": "cruise", "seed": 11 },
+  { "file": "2-approach.png", "query": "?shot=approach&seed=11", "url": "?shot=approach&seed=11", "shot": "approach", "seed": 11 },
+  { "file": "3-rings.png", "query": "?shot=rings&seed=11", "url": "?shot=rings&seed=11", "shot": "rings", "seed": 11 },
+  { "file": "4-dusk.png", "query": "?shot=dusk&seed=11", "url": "?shot=dusk&seed=11", "shot": "dusk", "seed": 11 }
+]
